@@ -8,12 +8,13 @@ import os
 from scipy import ndimage
 from tqdm import tqdm
 
+# These dirs need to be set manually!
 # Dir with niftis (segmentations)
-niftidir = "/home/sander/Documents/nnUNet_data/nnUNet_raw/nnUNet_raw_data/Task201_ETZDataPaul/raw_sander/labels_ones/"
+niftidir = ""
 # Where we want to save our visualisations
-outdir = "/home/sander/Documents/nnUNet_data/nnUNet_raw/nnUNet_raw_data/Task201_ETZDataPaul/raw_sander/paper_paul/"
+outdir = ""
 # spss file storing our z-scores and impairment scores
-scoresfile = "/home/sander/Documents/sander_nps_basefiles2/tumor_features/20220303 Total WeCare.sav"
+scoresfile = ""
 
 
 def calculate_visualisation(df, for_vars, run_name) -> None:
