@@ -35,6 +35,7 @@ def calculate_visualisation(df, for_vars, run_name) -> None:
     tumors_per_pixel = all_results.copy()  # Number of tumors per pixel
     tumors_per_pixel_for_vis_frontal = np.zeros(shape)  # Visualisation number of frontal tumors
     tumors_per_pixel_for_vis_nonfrontal = np.zeros(shape)  # Visualisation number of non-frontal tumors
+    tumors_per_pixel_for_vis_involvement = np.zeros(shape)  # Visualisation number of frontally involved tumors
 
     # Paths and names for saving
     out_names = [item + '_' + run_name for item in for_vars]
@@ -73,26 +74,22 @@ def calculate_visualisation(df, for_vars, run_name) -> None:
             all_results = all_results + to_add
 
             # Count tumors for the seperate visualisation on tumor location
-            frontal = df[df['id_code'] == int(id)]['frontal'].values[0] == 'yes'
-            nonfrontal = df[df['id_code'] == int(id)]['frontal'].values[0] == 'no'
+            frontal = df[df['id_code'] == int(id)]['frontal_nonfrontal_v3'].values[0] == 'Frontal'
+            nonfrontal = df[df['id_code'] == int(id)]['frontal_nonfrontal_v3'].values[0] == 'Non-frontal'
+            involvement = df[df['id_code'] == int(id)]['frontal_nonfrontal_v3'].values[0] == 'Frontal involvement'
             tumors_per_pixel_for_vis_nonfrontal = tumors_per_pixel_for_vis_nonfrontal + img_npy * nonfrontal
             tumors_per_pixel_for_vis_frontal = tumors_per_pixel_for_vis_frontal + img_npy * frontal
+            tumors_per_pixel_for_vis_involvement = tumors_per_pixel_for_vis_involvement + img_npy * involvement
 
     # Devide results by tumors per pixel
     nan_array = np.zeros_like(all_results)
     nan_array[:] = np.nan
     all_results_corrected = np.divide(all_results, tumors_per_pixel, out=nan_array,
                                       where=(tumors_per_pixel) != 0)
+    all_results_masked = np.ma.masked_where(tumors_per_pixel == 0, all_results)
+    all_results_corrected_masked = np.ma.masked_where(tumors_per_pixel == 0, all_results_corrected)
 
     # Create an output per variable
-    for result, output_file in zip(all_results_corrected, output_files):
-        img_out_itk = sitk.GetImageFromArray(result)
-        img_out_itk.SetOrigin(template_image.GetOrigin())
-        img_out_itk.SetDirection(template_image.GetDirection())
-        img_out_itk.SetSpacing(template_image.GetSpacing())
-
-        sitk.WriteImage(img_out_itk, output_file + '_divided_by_n_tumors.nii.gz')
-
     for result, output_file in zip(all_results, output_files):
         img_out_itk = sitk.GetImageFromArray(result)
         img_out_itk.SetOrigin(template_image.GetOrigin())
@@ -101,19 +98,49 @@ def calculate_visualisation(df, for_vars, run_name) -> None:
 
         sitk.WriteImage(img_out_itk, output_file + '_raw.nii.gz')
 
+    for result, output_file in zip(all_results_masked, output_files):
+
+        img_out_itk = sitk.GetImageFromArray(result)
+        img_out_itk.SetOrigin(template_image.GetOrigin())
+        img_out_itk.SetDirection(template_image.GetDirection())
+        img_out_itk.SetSpacing(template_image.GetSpacing())
+
+        np.save(output_file + '_masked.npy', result.filled(np.nan))
+        sitk.WriteImage(img_out_itk, output_file + '.nii.gz')
+
     # Create visualisation for tumor location (independend of the z-scores/impairment)
     print('Creating tumors per pixel frontal vs non-frontal')
+    tumors_per_pixel_for_vis_nonfrontal[tumors_per_pixel_for_vis_nonfrontal==0]=np.nan
     img_out_itk = sitk.GetImageFromArray(tumors_per_pixel_for_vis_nonfrontal)
     img_out_itk.SetOrigin(template_image.GetOrigin())
     img_out_itk.SetDirection(template_image.GetDirection())
     img_out_itk.SetSpacing(template_image.GetSpacing())
     sitk.WriteImage(img_out_itk, outdir + 'tumors_per_pixel_for_vis_nonfrontal.nii.gz')
+    np.save(outdir + 'tumors_per_pixel_for_vis_nonfrontal.npy', tumors_per_pixel_for_vis_nonfrontal)
 
+    tumors_per_pixel_for_vis_frontal[tumors_per_pixel_for_vis_frontal==0]=np.nan
     img_out_itk = sitk.GetImageFromArray(tumors_per_pixel_for_vis_frontal)
     img_out_itk.SetOrigin(template_image.GetOrigin())
     img_out_itk.SetDirection(template_image.GetDirection())
     img_out_itk.SetSpacing(template_image.GetSpacing())
     sitk.WriteImage(img_out_itk, outdir + 'tumors_per_pixel_for_vis_frontal.nii.gz')
+    np.save(outdir + 'tumors_per_pixel_for_vis_frontal.npy', tumors_per_pixel_for_vis_frontal)
+
+    tumors_per_pixel_for_vis_involvement[tumors_per_pixel_for_vis_involvement==0]=np.nan
+    img_out_itk = sitk.GetImageFromArray(tumors_per_pixel_for_vis_involvement)
+    img_out_itk.SetOrigin(template_image.GetOrigin())
+    img_out_itk.SetDirection(template_image.GetDirection())
+    img_out_itk.SetSpacing(template_image.GetSpacing())
+    sitk.WriteImage(img_out_itk, outdir + 'tumors_per_pixel_for_vis_involvement.nii.gz')
+    np.save(outdir + 'tumors_per_pixel_for_vis_involvement.npy', tumors_per_pixel_for_vis_involvement)
+
+    tumors_per_pixel[tumors_per_pixel==0]=np.nan
+    img_out_itk = sitk.GetImageFromArray(tumors_per_pixel)
+    img_out_itk.SetOrigin(template_image.GetOrigin())
+    img_out_itk.SetDirection(template_image.GetDirection())
+    img_out_itk.SetSpacing(template_image.GetSpacing())
+    sitk.WriteImage(img_out_itk, outdir + 'tumors_per_pixel.nii.gz')
+    np.save(outdir + 'tumors_per_pixel.npy', tumors_per_pixel)
 
 
 def main() -> None:
